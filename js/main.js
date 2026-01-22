@@ -62,13 +62,17 @@ function goToSlide(slideNumber) {
 // ===== Touch Events for Mobile =====
 let touchStartX = 0;
 let touchEndX = 0;
+let touchStartY = 0;
+let touchEndY = 0;
 
 document.addEventListener('touchstart', function (e) {
     touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
 });
 
 document.addEventListener('touchend', function (e) {
     touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
     handleSwipe();
 });
 
@@ -76,11 +80,27 @@ document.addEventListener('touchend', function (e) {
  * Handle swipe gesture for navigation
  */
 function handleSwipe() {
-    if (touchEndX < touchStartX - 50) {
-        nextSlide(); // Swipe left = next
-    }
-    if (touchEndX > touchStartX + 50) {
-        previousSlide(); // Swipe right = previous
+    const horizontalDiff = touchEndX - touchStartX;
+    const verticalDiff = touchEndY - touchStartY;
+    const minSwipeDistance = 80; // Increased from 50 to reduce sensitivity
+    
+    // Check if horizontal swipe is more significant than vertical
+    if (Math.abs(horizontalDiff) > Math.abs(verticalDiff) && Math.abs(horizontalDiff) > minSwipeDistance) {
+        // RTL mode: swipe right = next, swipe left = previous
+        if (isRTL) {
+            if (horizontalDiff > 0) {
+                nextSlide(); // Swipe right = next in RTL
+            } else {
+                previousSlide(); // Swipe left = previous in RTL
+            }
+        } else {
+            // LTR mode: swipe left = next, swipe right = previous
+            if (horizontalDiff < 0) {
+                nextSlide(); // Swipe left = next in LTR
+            } else {
+                previousSlide(); // Swipe right = previous in LTR
+            }
+        }
     }
 }
 
@@ -414,22 +434,29 @@ function handleNavigationVisibility() {
 
     // Touch handling for mobile devices
     if (isTouchDevice) {
-        // Show navigation on any tap on the bottom third of the screen
+        // Show navigation on any tap on the bottom 20% of the screen
         document.addEventListener('touchstart', (e) => {
             const touch = e.touches[0];
             const distanceFromBottom = window.innerHeight - touch.clientY;
 
-            if (distanceFromBottom <= window.innerHeight / 3) {
+            if (distanceFromBottom <= window.innerHeight * 0.2) {
                 showNavigation();
                 hideNavigation(); // Auto-hide after delay
             }
         });
 
-        // Also show on any tap on the navigation itself
+        // Also show on any tap on the navigation itself, but hide after interaction
         if (navControls) {
             navControls.addEventListener('touchstart', (e) => {
                 e.stopPropagation();
                 showNavigation();
+            });
+            
+            // Hide navigation after button click on mobile
+            navControls.querySelectorAll('button, select').forEach(element => {
+                element.addEventListener('click', () => {
+                    setTimeout(() => hideNavigation(), 500);
+                });
             });
         }
     }
@@ -451,5 +478,5 @@ function handleNavigationVisibility() {
 
     // Show navigation briefly on page load
     showNavigation();
-    setTimeout(hideNavigation, isTouchDevice ? 3000 : 2000);
+    setTimeout(hideNavigation, isTouchDevice ? 2000 : 2000);
 }
